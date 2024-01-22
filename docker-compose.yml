@@ -5,7 +5,6 @@ services:
     ports:
       - "8081:8081"
     command: jobmanager
-#    network_mode: "host"
     environment:
       - |
         FLINK_PROPERTIES=
@@ -17,8 +16,12 @@ services:
       - jobmanager
     command: taskmanager
     scale: 1
+    volumes:
+      - shared:/flink/lib
     environment:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
-        taskmanager.numberOfTaskSlots: 2   
+        taskmanager.numberOfTaskSlots: 2
+volumes:
+  shared:
