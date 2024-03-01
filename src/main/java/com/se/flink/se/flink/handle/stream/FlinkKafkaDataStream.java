@@ -25,18 +25,18 @@ public class FlinkKafkaDataStream {
     public static void handleTxn() throws Exception {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.enableCheckpointing(1000);
 
         String bootstrapServers = "localhost:9092, localhost:9093, localhost:9094";
         KafkaSource<Transaction> source = KafkaSource.<String>builder()
                 .setBootstrapServers(bootstrapServers)
-                .setTopics("txn-flink")
+                .setTopics("txn-flink-prod")
                 .setGroupId("flink-group")
-                .setStartingOffsets(OffsetsInitializer.committedOffsets())
+                .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new JsonDeserializationSchema(Transaction.class))
                 .build();
 
         DataStreamSource<Transaction> dataStream = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka");
-
         DataStream<Transaction> map = dataStream
                 .map((MapFunction<Transaction, Transaction>) transaction -> {
                     transaction.setStatus("SUC");
@@ -49,11 +49,12 @@ public class FlinkKafkaDataStream {
         KafkaSink<Transaction> sink = KafkaSink.<Transaction>builder()
                 .setBootstrapServers(bootstrapServers)
                 .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                        .setTopic("txn-flink-rs").setValueSerializationSchema(
+                        .setTopic("txn-flink-cons").setValueSerializationSchema(
                                 (SerializationSchema<Transaction>) transaction ->
                                         new Gson().toJson(transaction).getBytes()).build())
                 .setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
                 .build();
+        filter.print();
         filter.sinkTo(sink);
         env.execute();
     }
